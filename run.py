@@ -217,6 +217,7 @@ def make_tensor_back(ori_image_path, crop_coor):
 
     for i in range(idx):
         x1, y1, x2, y2, score, cls = crop_coor[i]
+        # if score > 0.6:
         # 裁剪目标区域
         cropped_image = ori_image[int(y1):int(y2), int(x1):int(x2), :]
 
@@ -236,7 +237,6 @@ def make_tensor_back(ori_image_path, crop_coor):
 
         input_tensor[:, int(cls), :, :, :] = image_tensor
 
-    print(input_tensor.shape)
     return input_tensor
 
 
