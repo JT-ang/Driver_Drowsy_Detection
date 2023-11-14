@@ -6,31 +6,35 @@ from torch.utils.data import Dataset
 
 
 class CustomDataset(Dataset):
-    def __init__(self, train_data_folder_path):
-        self.train_data_folder = train_data_folder_path
-        self.file_names = os.listdir(train_data_folder_path)
+    def __init__(self, data_path):
+        self.train_data_folder = data_path
         self.labels = []
+        self.file_paths = []
+
+        normal_path = os.path.join(data_path, "normal")
+        drowsy_path = os.path.join(data_path, "drowsy")
+
+        self.file_paths.extend([os.path.join(normal_path, file_name) for file_name in os.listdir(normal_path)])
+        self.file_paths.extend([os.path.join(drowsy_path, file_name) for file_name in os.listdir(drowsy_path)])
+
+        self.labels.extend(make_label_tensors(normal_path))
+        self.labels.extend(make_label_tensors(drowsy_path))
 
     def set_label_test(self, label_list):
         self.labels = label_list
 
     def __len__(self):
-        if len(self.file_names) == len(self.labels):
-            return len(self.file_names)
+        if len(self.file_paths) == len(self.labels):
+            return len(self.file_paths)
         else:
-            print(f"data size:{len(self.file_names)}, labels:{len(self.labels)}")
+            print(f"data size: {len(self.file_paths)}, labels: {len(self.labels)}")
             raise ValueError("Dataset data should match with labels")
 
     def __getitem__(self, index):
-        # TODO 优化存储的结构，试着不要用list而使用tensor？
-        file_name = self.file_names[index]
-        image_path = os.path.join(self.train_data_folder, file_name)
-
-        image = get_image_from_filepath(image_path, False)
-        # cv preprocess
-        # Return the image in tensor mode
-        # image = torch.from_numpy(image)
+        file_path = self.file_paths[index]
+        image = get_image_from_filepath(file_path, False)
         label = self.labels[index]
+
         return image, label
 
 
@@ -45,3 +49,17 @@ def get_image_from_filepath(img_path, need_batch=True):
         img = np.expand_dims(img, axis=0)
 
     return img
+
+
+def make_label_tensors(path):
+    files = os.listdir(path)
+    num = len(files) if len(files) else -1
+    if num == -1:
+        raise ValueError("Wrong Dataset init with folder wrong")
+    if path.find("drowsy") != -1:
+        # generate one thousand tensors same as the tensor bellow
+        labels = [torch.tensor([0, 1.0]) for _ in range(num)]
+        return labels
+    else:
+        labels = [torch.tensor([1.0, 0]) for _ in range(num)]
+        return labels

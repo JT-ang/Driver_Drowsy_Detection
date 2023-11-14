@@ -3,10 +3,9 @@ import torch.optim
 from torch.utils.data import Dataset, DataLoader
 from models import DDnet, DDpredictor
 from data import CustomDataset
-import cv2
 
 
-def train(model, data_set, epoch_num, device=torch.device('cpu'), lr=0.03, batch_size=1, reorder=True):
+def train(model, data_set, epoch_num, device=torch.device('cpu'), lr=0.03, batch_size=1, reorder=False):
     model.to(device)
     model.train()
     paras = [para for para in model.predictor.parameters()]
@@ -21,16 +20,15 @@ def train(model, data_set, epoch_num, device=torch.device('cpu'), lr=0.03, batch
 
         for idx, data in enumerate(data_loader):
             image, label = data
-            image = image.to(device)
-            label = label.to(device)
+            image = image.numpy()
+            # image = image.to(device)
+            # label = label.to(device)
             # 清零
             optimizer.zero_grad()
             # 训练开始
             with torch.set_grad_enabled(True):
                 pred_prob = model(image)
                 # ans = torch.max(pred_prob, dim=1)
-                print("debug")
-                exit(0)
                 loss_val = loss_func(pred_prob, label)
                 loss_val.backward()
                 optimizer.step()
@@ -43,12 +41,8 @@ def train(model, data_set, epoch_num, device=torch.device('cpu'), lr=0.03, batch
 if __name__ == '__main__':
     model = DDnet()
     r_device = torch.device('cpu')
-    labels = []
-    train_data_folder = "D:\\Software\\spider\\Driver_Drowsy_Detection\\images"
+    train_data_folder = "E:\\dataset\\train_set"
     dataset = CustomDataset(train_data_folder)
     # TODO: make the labels read from file
-    labels = [torch.tensor([0, 1.0]), torch.tensor([1.0, 0])]
-    dataset.set_label_test(labels)
-    train(model, dataset, 1, device=r_device, lr=0.003)
+    train(model, dataset, 10, device=r_device, lr=0.003)
     print("[Train Finished!]")
-    # torch.save(model.parameters())
