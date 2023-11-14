@@ -2,20 +2,11 @@ import os
 
 import onnx
 import onnxruntime as ort
-import numpy as np
-
-import sys
-
-import onnx
-import onnxruntime as ort
 import cv2
 import numpy as np
 import torch
 
 CLASSES = ['face', 'eye', 'mouth']  # coco80类别
-
-
-# CLASSES = ['electrode', 'breathers', 'ventilate', 'press']
 
 
 class Yolov5ONNX(object):
@@ -31,8 +22,6 @@ class Yolov5ONNX(object):
 
         options = ort.SessionOptions()
         options.enable_profiling = True
-        # self.onnx_session = ort.InferenceSession(onnx_path, sess_options=options,
-        #                                          providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
         self.onnx_session = ort.InferenceSession(onnx_path)
         self.input_name = self.get_input_name()  # ['images']
         self.output_name = self.get_output_name()  # ['output0']
@@ -61,23 +50,41 @@ class Yolov5ONNX(object):
 
         return input_feed
 
-    def inference(self, img_path):
+    def inference(self, image_in):
         """ 1.cv2读取图像并resize
         2.图像转BGR2RGB和HWC2CHW(因为yolov5的onnx模型输入为 RGB：1 × 3 × 640 × 640)
         3.图像归一化
         4.图像增加维度
         5.onnx_session 推理 """
-        img = cv2.imread(img_path)
-        or_img = cv2.resize(img, (640, 640))  # resize后的原图 (640, 640, 3)
-        img = or_img[:, :, ::-1].transpose(2, 0, 1)  # BGR2RGB和HWC2CHW
+        if image_in.shape != (640, 640, 3):
+            print("input size is not pre-changed")
+        image_in = cv2.resize(image_in, (640, 640))  # resize后的原图 (640, 640, 3)
+        img = image_in[:, :, ::-1].transpose(2, 0, 1)  # BGR2RGB和HWC2CHW
         img = img.astype(dtype=np.float32)  # onnx模型的类型是type: float32[ , , , ]
         img /= 255.0
         img = np.expand_dims(img, axis=0)  # [3, 640, 640]扩展为[1, 3, 640, 640]
+        # TODO: 这部分应该放到数据集的处理数据输入,在写predict函数时可以这样做
         # img尺寸(1, 3, 640, 640)
         input_feed = self.get_input_feed(img)  # dict:{ input_name: input_value }
         pred = self.onnx_session.run(None, input_feed)[0]  # <class 'numpy.ndarray'>(1, 25200, 9)
 
-        return pred, or_img
+        return pred, image_in
+
+    def get_area(self, frame):
+        """
+        :param frame:
+        :return:
+        :details 默认该函数为训练过程中使用，因此不会出现frame中拿不到要求数量的区域
+        """
+        # TODO: 或许改成tensor?
+        if not isinstance(frame, np.ndarray):
+            raise TypeError("Should be np array")
+
+        pred, ori_frame = self.inference(frame)
+        filter_res = filter_box(pred,0.5,0.5)
+        check_var = set(outbox[:, 5])
+        return make_tensor_back(ori_frame, filter_res)
+
 
 
 # dets:  array [x,6] 6个值分别为x1,y1,x2,y2,score,class
@@ -95,7 +102,6 @@ def nms(dets, thresh):
     # -------------------------------------------------------
     areas = (y2 - y1 + 1) * (x2 - x1 + 1)
     scores = dets[:, 4]
-    # print(scores)
     keep = []
     index = scores.argsort()[::-1]  # np.argsort()对某维度从小到大排序
     # [::-1] 从最后一个元素到第一个元素复制一遍。倒序从而从大到小排序
@@ -147,8 +153,6 @@ def filter_box(org_box, conf_thres, iou_thres):  # 过滤掉无用的框
     # […,4]：代表了取最里边一层的所有第4号元素，…代表了对:,:,:,等所有的的省略。此处生成：25200个第四号元素组成的数组
     conf = org_box[..., 4] > conf_thres  # 0 1 2 3 4 4是置信度，只要置信度 > conf_thres 的
     box = org_box[conf == True]  # 根据objectness score生成(n, 9)，只留下符合要求的框
-    print('box:符合要求的框')
-    print(box.shape)
 
     # -------------------------------------------------------
     #   通过argmax获取置信度最大的类别
@@ -170,7 +174,6 @@ def filter_box(org_box, conf_thres, iou_thres):  # 过滤掉无用的框
     for i in range(len(all_cls)):
         curr_cls = all_cls[i]
         curr_cls_box = []
-        curr_out_box = []
 
         for j in range(len(cls)):
             if cls[j] == curr_cls:
@@ -178,7 +181,6 @@ def filter_box(org_box, conf_thres, iou_thres):  # 过滤掉无用的框
                 curr_cls_box.append(box[j][:6])  # 左闭右开，0 1 2 3 4 5
 
         curr_cls_box = np.array(curr_cls_box)  # 0 1 2 3 4 5 分别是 x y w h score class
-        # curr_cls_box_old = np.copy(curr_cls_box)
         curr_cls_box = xywh2xyxy(curr_cls_box)  # 0 1 2 3 4 5 分别是 x1 y1 x2 y2 score class
         curr_out_box = nms(curr_cls_box, iou_thres)  # 获得nms后，剩下的类别在curr_cls_box中的下标
 
@@ -192,7 +194,6 @@ def draw(image, box_data):
     # -------------------------------------------------------
     # 取整，方便画框
     # -------------------------------------------------------
-
     boxes = box_data[..., :4].astype(np.int32)  # x1 x2 y1 y2
     scores = box_data[..., 4]
     classes = box_data[..., 5].astype(np.int32)
@@ -209,15 +210,13 @@ def draw(image, box_data):
     return image
 
 
-def make_tensor_back(ori_image_path, crop_coor):
+def make_tensor_back(ori_image, crop_coor):
     idx = crop_coor.shape[0]
-    ori_image = cv2.imread(ori_image_path)
     ori_image = cv2.resize(ori_image, (640, 640))
     input_tensor = torch.Tensor(1, 3, 3, 227, 227)
 
     for i in range(idx):
         x1, y1, x2, y2, score, cls = crop_coor[i]
-        # if score > 0.6:
         # 裁剪目标区域
         cropped_image = ori_image[int(y1):int(y2), int(x1):int(x2), :]
 
@@ -246,14 +245,11 @@ if __name__ == "__main__":
     model = Yolov5ONNX(onnx_path)
 
     for filename in os.listdir(img_folder):
-        if filename.endswith('.bmp') or filename.endswith('.jpg') or filename.endswith('.png')\
+        if filename.endswith('.bmp') or filename.endswith('.jpg') or filename.endswith('.png') \
                 or filename.endswith('.jpeg'):
             img_path = os.path.join(img_folder, filename)
-            output, or_img = model.inference(img_path)
-
-            # print('pred: 位置[0, 10000, :]的数组')
-            # print(output.shape)
-            # print(output[0, 10000, :])
+            input_image = cv2.imread(img_path)
+            output, or_img = model.inference(input_image)
 
             outbox = filter_box(output, 0.5, 0.5)  # 最终剩下的Anchors：0 1 2 3 4 5 分别是 x1 y1 x2 y2 score class
             print('outbox( x1 y1 x2 y2 score class):')
@@ -266,10 +262,11 @@ if __name__ == "__main__":
             if len(check_set) != 3:
                 print("集合大小不等于3")
                 continue
-            tensor = make_tensor_back(img_path, outbox)
-
+            tensor = make_tensor_back(input_image, outbox)
 
             # 保存结果图像
             or_img = draw(or_img, outbox)
-            result_path = os.path.join('./results', filename)
-            cv2.imwrite(result_path, or_img)
+            # result_path = os.path.join('./results', filename)
+            # cv2.imwrite(result_path, or_img)
+            cv2.imshow("final", or_img)
+            cv2.waitKey(0)

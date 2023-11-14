@@ -2,7 +2,6 @@ import torch.nn as nn
 
 import torch
 from torchvision import models
-from pytorchsummary import summary
 
 
 class RegionDetector:
