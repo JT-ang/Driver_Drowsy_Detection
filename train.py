@@ -18,6 +18,7 @@ def train(model, data_set, epoch_num, device=torch.device('cpu'), lr=0.03, batch
     data_loader = DataLoader(dataset=data_set, batch_size=batch_size, shuffle=reorder, num_workers=numer_workers)
     for epoch in range(0, epoch_num):
         epoch_loss = 0.0
+
         for idx, data in enumerate(data_loader):
             image, label = data
             image = image.to(device)
@@ -28,6 +29,7 @@ def train(model, data_set, epoch_num, device=torch.device('cpu'), lr=0.03, batch
             with torch.set_grad_enabled(True):
                 pred_prob = model(image)
                 # ans = torch.max(pred_prob, dim=1)
+                print("debug")
                 exit(0)
                 loss_val = loss_func(pred_prob, label)
                 loss_val.backward()
@@ -42,8 +44,11 @@ if __name__ == '__main__':
     model = DDnet()
     r_device = torch.device('cpu')
     labels = []
-    train_data_folder = "D:\\Software\\spider\\Driver_Drowsy_Detection\\imgs"
+    train_data_folder = "D:\\Software\\spider\\Driver_Drowsy_Detection\\images"
     dataset = CustomDataset(train_data_folder)
+    # TODO: make the labels read from file
+    labels = [torch.tensor([0, 1.0]), torch.tensor([1.0, 0])]
     dataset.set_label_test(labels)
-    labels.append(torch.tensor(([0, 1.0])))
-    train(model, dataset, 30, device=r_device, lr=0.003)
+    train(model, dataset, 1, device=r_device, lr=0.003)
+    print("[Train Finished!]")
+    # torch.save(model.parameters())
