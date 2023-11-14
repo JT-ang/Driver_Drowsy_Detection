@@ -5,7 +5,7 @@ from models import DDnet, DDpredictor
 from data import CustomDataset
 
 
-def train(model, data_set, epoch_num, device=torch.device('cpu'), lr=0.03, batch_size=1, reorder=False):
+def train(model, data_set, epoch_num, device=torch.device('cpu'), lr=0.03, batch_size=1, reorder=True):
     model.to(device)
     model.train()
     paras = [para for para in model.predictor.parameters()]
@@ -33,9 +33,12 @@ def train(model, data_set, epoch_num, device=torch.device('cpu'), lr=0.03, batch
                 loss_val.backward()
                 optimizer.step()
                 epoch_loss += loss_val.item()
-            print(f"{idx:03d} / {len(data_loader):03d}")
-        print(f"[Epoch]: {epoch}, [Loss]: {epoch_loss:.4f}")
+            if idx % 20 == 0:
+                print(f"{idx:03d} / {len(data_loader):03d}")
+        print(f"[Epoch]: {epoch}, [Loss]: {epoch_loss / len(data_set):.4f}")
         print(f"Epoch {epoch:02d}/{epoch_num:02d}")
+        loss_list.append(epoch_loss / len(data_set))
+    print(loss_list)
 
 
 if __name__ == '__main__':
@@ -44,5 +47,5 @@ if __name__ == '__main__':
     train_data_folder = "E:\\dataset\\train_set"
     dataset = CustomDataset(train_data_folder)
     # TODO: make the labels read from file
-    train(model, dataset, 10, device=r_device, lr=0.003)
+    train(model, dataset, 10, device=r_device, lr=0.03)
     print("[Train Finished!]")

@@ -87,7 +87,6 @@ class ObjectDetector:
 
         conf = org_box[..., 4] > self.conf_thres
         box = org_box[conf == True]
-        print('box:matched!')
         # print(box.shape)
 
         cls_cinf = box[..., 5:]
@@ -158,11 +157,13 @@ class DDpredictor(nn.Module):
     def __init__(self):
         super().__init__()
         # TODO change the pretrained = True
-        self.eye_alex = models.alexnet(weights=None)
+        self.eye_alex = models.alexnet(weights=models.AlexNet_Weights.IMAGENET1K_V1)
         self.eye_alex.classifier = nn.Sequential()
+        self.eye_alex.requires_grad_(False)
 
-        self.mouth_alex = models.alexnet(weights=None)
+        self.mouth_alex = models.alexnet(weights=models.AlexNet_Weights.IMAGENET1K_V1)
         self.mouth_alex.classifier = nn.Sequential()
+        self.mouth_alex.requires_grad_(False)
 
         self.predictor = nn.Sequential(
             nn.Flatten(),
