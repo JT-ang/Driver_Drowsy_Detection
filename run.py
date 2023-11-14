@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 import torch
 
-CLASSES = ['face', 'eye', 'mouth']  # coco80类别
+CLASSES = ['face', 'eye', 'mouth']
 
 
 class Yolov5ONNX(object):
@@ -57,10 +57,8 @@ class Yolov5ONNX(object):
         4.图像增加维度
         5.onnx_session 推理 """
         if image_in.shape != (640, 640, 3):
-            print("input size is not pre-changed")
-        image_in = cv2.resize(image_in, (1,640, 640,3))  # resize后的原图 (640, 640, 3)
-        img = image_in[:, :, ::-1].transpose(2, 0, 1)  # BGR2RGB和HWC2CHW
-        img = img.astype(dtype=np.float32)
+            print(f"input size is not pre-changed, got {image_in.shape}")
+        img = image_in.astype(dtype=np.float32)
         img /= 255.0
         img = np.expand_dims(img, axis=0)  # [3, 640, 640]扩展为[1, 3, 640, 640]
         # TODO: 这部分应该放到数据集的处理数据输入,在写predict函数时可以这样做
@@ -77,12 +75,15 @@ class Yolov5ONNX(object):
         :details 默认该函数为训练过程中使用，因此不会出现frame中拿不到要求数量的区域
         """
         # TODO: 或许改成tensor?
+        print(f"type of the frame:{type(frame)}")
         if not isinstance(frame, np.ndarray):
             if isinstance(frame, torch.Tensor):
                 frame = frame.numpy()
             else:
                 raise TypeError("Should be np array")
 
+        print(frame.shape)
+        exit(0)
         pred, ori_frame = self.inference(frame)
         filter_res = filter_box(pred, 0.5, 0.5)
         res_tensor = make_tensor_back(ori_frame, filter_res)

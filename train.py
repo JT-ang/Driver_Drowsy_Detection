@@ -28,6 +28,7 @@ def train(model, data_set, epoch_num, device=torch.device('cpu'), lr=0.03, batch
             with torch.set_grad_enabled(True):
                 pred_prob = model(image)
                 # ans = torch.max(pred_prob, dim=1)
+                exit(0)
                 loss_val = loss_func(pred_prob, label)
                 loss_val.backward()
                 optimizer.step()
@@ -40,10 +41,9 @@ def train(model, data_set, epoch_num, device=torch.device('cpu'), lr=0.03, batch
 if __name__ == '__main__':
     model = DDnet()
     r_device = torch.device('cpu')
-    frames = []
     labels = []
-    reg_frame = cv2.imread("D:\\Software\\spider\\Driver_Drowsy_Detection\\imgs\\10.bmp")
-    frames.append(reg_frame)
+    train_data_folder = "D:\\Software\\spider\\Driver_Drowsy_Detection\\imgs"
+    dataset = CustomDataset(train_data_folder)
+    dataset.set_label_test(labels)
     labels.append(torch.tensor(([0, 1.0])))
-    data_set = CustomDataset(frames, labels)
-    train(model, data_set, 30, device=r_device, lr=0.003)
+    train(model, dataset, 30, device=r_device, lr=0.003)

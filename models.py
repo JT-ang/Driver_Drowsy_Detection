@@ -67,7 +67,7 @@ class DDpredictor(nn.Module):
 
 
 if __name__ == '__main__':
-    image = cv2.imread("D:\\Software\\spider\\Driver_Drowsy_Detection\\imgs\\10.bmp")
+    image = cv2.imread("D:\\Software\\spider\\Driver_Drowsy_Detection\\imgs\\001.bmp")
     model = DDnet()
     predict = model(image)
     print(predict)
