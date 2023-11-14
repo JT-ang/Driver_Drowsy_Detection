@@ -3,9 +3,10 @@ import torch.optim
 from torch.utils.data import Dataset, DataLoader
 from models import DDnet, DDpredictor
 from data import CustomDataset
+import cv2
 
 
-def train(model, data_set, epoch_num, device=torch.device('cpu'), lr=0.03, batch_size=2, reorder=True):
+def train(model, data_set, epoch_num, device=torch.device('cpu'), lr=0.03, batch_size=1, reorder=True):
     model.to(device)
     model.train()
     paras = [para for para in model.predictor.parameters()]
@@ -18,16 +19,15 @@ def train(model, data_set, epoch_num, device=torch.device('cpu'), lr=0.03, batch
     for epoch in range(0, epoch_num):
         epoch_loss = 0.0
         for idx, data in enumerate(data_loader):
-            images, label = data
-            e_data = images['eye'].to(device)
-            m_data = images['mouth'].to(device)
+            image, label = data
+            image = image.to(device)
             label = label.to(device)
             # 清零
             optimizer.zero_grad()
             # 训练开始
             with torch.set_grad_enabled(True):
-                pred_prob = model(e_data, m_data)
-                ans = torch.max(pred_prob, dim=1)
+                pred_prob = model(image)
+                # ans = torch.max(pred_prob, dim=1)
                 loss_val = loss_func(pred_prob, label)
                 loss_val.backward()
                 optimizer.step()
@@ -38,11 +38,12 @@ def train(model, data_set, epoch_num, device=torch.device('cpu'), lr=0.03, batch
 
 
 if __name__ == '__main__':
-    # model = DDnet()
-    model = DDpredictor()
-    r_device = torch.device('cuda')
-    eye = torch.randn(size=(2, 3, 227, 227))
-    mouth = torch.randn(size=(2, 3, 227, 227))
-    labels = torch.tensor([[0, 0, 1.0], [0, 0, 1.0]])
-    data_set = CustomDataset(eye, mouth, labels)
+    model = DDnet()
+    r_device = torch.device('cpu')
+    frames = []
+    labels = []
+    reg_frame = cv2.imread("D:\\Software\\spider\\Driver_Drowsy_Detection\\imgs\\10.bmp")
+    frames.append(reg_frame)
+    labels.append(torch.tensor(([0, 1.0])))
+    data_set = CustomDataset(frames, labels)
     train(model, data_set, 30, device=r_device, lr=0.003)

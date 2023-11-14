@@ -51,16 +51,16 @@ class Yolov5ONNX(object):
         return input_feed
 
     def inference(self, image_in):
-        """ 1.cv2读取图像并resize
+        """ 1.拿到输入图像image_in
         2.图像转BGR2RGB和HWC2CHW(因为yolov5的onnx模型输入为 RGB：1 × 3 × 640 × 640)
         3.图像归一化
         4.图像增加维度
         5.onnx_session 推理 """
         if image_in.shape != (640, 640, 3):
             print("input size is not pre-changed")
-        image_in = cv2.resize(image_in, (640, 640))  # resize后的原图 (640, 640, 3)
+        image_in = cv2.resize(image_in, (1,640, 640,3))  # resize后的原图 (640, 640, 3)
         img = image_in[:, :, ::-1].transpose(2, 0, 1)  # BGR2RGB和HWC2CHW
-        img = img.astype(dtype=np.float32)  # onnx模型的类型是type: float32[ , , , ]
+        img = img.astype(dtype=np.float32)
         img /= 255.0
         img = np.expand_dims(img, axis=0)  # [3, 640, 640]扩展为[1, 3, 640, 640]
         # TODO: 这部分应该放到数据集的处理数据输入,在写predict函数时可以这样做
@@ -72,19 +72,22 @@ class Yolov5ONNX(object):
 
     def get_area(self, frame):
         """
-        :param frame:
-        :return:
+        :param frame:输入一个numpy数组，表示一张图像
+        :return: 返回一个tensor
         :details 默认该函数为训练过程中使用，因此不会出现frame中拿不到要求数量的区域
         """
         # TODO: 或许改成tensor?
         if not isinstance(frame, np.ndarray):
-            raise TypeError("Should be np array")
+            if isinstance(frame, torch.Tensor):
+                frame = frame.numpy()
+            else:
+                raise TypeError("Should be np array")
 
         pred, ori_frame = self.inference(frame)
-        filter_res = filter_box(pred,0.5,0.5)
-        check_var = set(outbox[:, 5])
-        return make_tensor_back(ori_frame, filter_res)
-
+        filter_res = filter_box(pred, 0.5, 0.5)
+        res_tensor = make_tensor_back(ori_frame, filter_res)
+        print(f"Res Tensor shape:{res_tensor.shape}")
+        return res_tensor
 
 
 # dets:  array [x,6] 6个值分别为x1,y1,x2,y2,score,class
@@ -213,17 +216,18 @@ def draw(image, box_data):
 def make_tensor_back(ori_image, crop_coor):
     idx = crop_coor.shape[0]
     ori_image = cv2.resize(ori_image, (640, 640))
-    input_tensor = torch.Tensor(1, 3, 3, 227, 227)
+    # 只返回脸和眼睛
+    input_tensor = torch.Tensor(1, 2, 3, 227, 227)
 
     for i in range(idx):
         x1, y1, x2, y2, score, cls = crop_coor[i]
+        if cls != 0 or cls != 1:
+            continue
         # 裁剪目标区域
         cropped_image = ori_image[int(y1):int(y2), int(x1):int(x2), :]
 
         # 调整图像尺寸为模型所需的输入尺寸
         resized_image = cv2.resize(cropped_image, (227, 227))
-        # cv2.imshow("1", resized_image)
-        # cv2.waitKey(0)
 
         # 将图像从HWC格式转换为CHW格式
         image_data = resized_image.transpose(2, 0, 1)
