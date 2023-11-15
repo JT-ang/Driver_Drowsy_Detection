@@ -1,3 +1,4 @@
 result
 .cache/
 __pycache__/
+.idea/

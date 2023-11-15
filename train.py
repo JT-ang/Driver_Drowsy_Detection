@@ -1,11 +1,11 @@
 import torch.utils.data
 import torch.optim
 from torch.utils.data import Dataset, DataLoader
-from models import DDnet, DDpredictor
+from model import DDnet, DDpredictor
 from data import CustomDataset
 
 
-def train(model, data_set, epoch_num, device=torch.device('cpu'), lr=0.03, batch_size=1, reorder=True):
+def train(model, data_set, epoch_num, device=torch.device('cpu'), lr=0.03, batch_size=2, reorder=True):
     model.to(device)
     model.train()
     paras = [para for para in model.predictor.parameters()]
@@ -20,9 +20,8 @@ def train(model, data_set, epoch_num, device=torch.device('cpu'), lr=0.03, batch
 
         for idx, data in enumerate(data_loader):
             image, label = data
-            image = image.numpy()
-            # image = image.to(device)
-            # label = label.to(device)
+            image = image.to(device)
+            label = label.to(device)
             # 清零
             optimizer.zero_grad()
             # 训练开始
@@ -33,6 +32,7 @@ def train(model, data_set, epoch_num, device=torch.device('cpu'), lr=0.03, batch
                 loss_val.backward()
                 optimizer.step()
                 epoch_loss += loss_val.item()
+            print("done one")
             if idx % 20 == 0:
                 print(f"{idx:03d} / {len(data_loader):03d}")
         print(f"[Epoch]: {epoch}, [Loss]: {epoch_loss / len(data_set):.4f}")
@@ -44,7 +44,7 @@ def train(model, data_set, epoch_num, device=torch.device('cpu'), lr=0.03, batch
 if __name__ == '__main__':
     model = DDnet()
     r_device = torch.device('cpu')
-    train_data_folder = "E:\\dataset\\train_set"
+    train_data_folder = "C:\\Users\\admin\\Desktop\\data"
     dataset = CustomDataset(train_data_folder)
     # TODO: make the labels read from file
     train(model, dataset, 10, device=r_device, lr=0.03)

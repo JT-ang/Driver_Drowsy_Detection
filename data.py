@@ -32,6 +32,7 @@ class CustomDataset(Dataset):
 
     def __getitem__(self, index):
         file_path = self.file_paths[index]
+        print(file_path)
         image = get_image_from_filepath(file_path, False)
         label = self.labels[index]
 
@@ -63,3 +64,5 @@ def make_label_tensors(path):
     else:
         labels = [torch.tensor([1.0, 0]) for _ in range(num)]
         return labels
+
+
