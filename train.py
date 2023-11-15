@@ -8,12 +8,13 @@ from data import CustomDataset
 def train(model, data_set, epoch_num, device=torch.device('cpu'), lr=0.03, batch_size=2, reorder=True):
     model.to(device)
     model.train()
-    paras = [para for para in model.predictor.parameters()]
+    paras = [para for para in model.predictor.classifier.parameters()]
     loss_list = []
+    grad_sum_list = []
     numer_workers = 4
     # only update the weights of the classifier
     loss_func = torch.nn.CrossEntropyLoss(reduction='mean')
-    optimizer = torch.optim.Adam(paras, lr=lr)
+    optimizer = torch.optim.SGD(paras, lr=lr)
     data_loader = DataLoader(dataset=data_set, batch_size=batch_size, shuffle=reorder, num_workers=numer_workers)
     for epoch in range(0, epoch_num):
         epoch_loss = 0.0
@@ -35,17 +36,62 @@ def train(model, data_set, epoch_num, device=torch.device('cpu'), lr=0.03, batch
             print("done one")
             if idx % 20 == 0:
                 print(f"{idx:03d} / {len(data_loader):03d}")
+                grad_sum_list.append(check_sum(paras))
         print(f"[Epoch]: {epoch}, [Loss]: {epoch_loss / len(data_set):.4f}")
         print(f"Epoch {epoch:02d}/{epoch_num:02d}")
         loss_list.append(epoch_loss / len(data_set))
-    print(loss_list)
+    print(f"loss list{loss_list}")
+    print(f"weight list{grad_sum_list}")
+
+
+def check_sum(paras):
+    res = 0
+    for para in paras:
+        res += torch.sum(para.data)
+    return res
+
+
+def testacc(model, data_set, batch_size, device=torch.device('cpu')):
+    model.eval()
+    model.to(device)
+    numer_workers = 4
+    loss_func = torch.nn.CrossEntropyLoss(reduction='mean')
+    data_loader = DataLoader(dataset=data_set, batch_size=batch_size, num_workers=numer_workers)
+    total_loss = 0
+    correct_predictions = 0
+    total_predictions = 0
+
+    with torch.no_grad():  # Disable gradient computation
+        for idx, data in enumerate(data_loader):
+            image, label = data
+            image = image.to(device)
+            label = label.to(device)
+
+            pred_prob = model(image)
+            loss_val = loss_func(pred_prob, label)
+
+            total_loss += loss_val.item()
+            _, predicted_labels = torch.max(pred_prob, 1)
+            correct_predictions += (predicted_labels == label).sum().item()
+            total_predictions += len(label)
+
+            print("done one")
+            if idx % 20 == 0:
+                print(f"{idx:03d} / {len(data_loader):03d}")
+
+    accuracy = correct_predictions / total_predictions
+    average_loss = total_loss / len(data_set)
+
+    print(f"Accuracy: {accuracy:.4f}")
+    print(f"Average Loss: {average_loss:.4f}")
 
 
 if __name__ == '__main__':
     model = DDnet()
     r_device = torch.device('cpu')
-    train_data_folder = "C:\\Users\\admin\\Desktop\\data"
+    train_data_folder = "E:\\dataset\\train_set"
     dataset = CustomDataset(train_data_folder)
     # TODO: make the labels read from file
-    train(model, dataset, 10, device=r_device, lr=0.03)
+    train(model, dataset, 2, device=r_device, lr=0.01)
+    testacc(model, dataset, 2, r_device)
     print("[Train Finished!]")

@@ -32,7 +32,6 @@ class CustomDataset(Dataset):
 
     def __getitem__(self, index):
         file_path = self.file_paths[index]
-        print(file_path)
         image = get_image_from_filepath(file_path, False)
         label = self.labels[index]
 

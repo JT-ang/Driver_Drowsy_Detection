@@ -105,7 +105,7 @@ class DDpredictor(nn.Module):
         self.mouth_alex.classifier = nn.Sequential()
         self.mouth_alex.requires_grad_(False)
 
-        self.predictor = nn.Sequential(
+        self.classifier = nn.Sequential(
             nn.Flatten(),
             nn.Dropout(),
             nn.Linear(256 * 6 * 6 * 2, 128),
@@ -126,7 +126,7 @@ class DDpredictor(nn.Module):
         eye_fea = eye_fea.view(eye_fea.size(0), -1)
         mouth_fea = mouth_fea.view(mouth_fea.size(0), -1)
         fea = torch.cat([eye_fea, mouth_fea], dim=1)
-        return self.predictor(fea)
+        return self.classifier(fea)
 
 
 class DDnet(nn.Module):
@@ -144,6 +144,8 @@ class DDnet(nn.Module):
         CLASSES = ['face', 'eye', 'mouth']
         self.region_maker = YOLODetector(model_path, device=self.device, classes=CLASSES)
         self.predictor = DDpredictor()
+        self.region_maker.model.requires_grad_(False)
+        self.predictor.classifier.requires_grad_(True)
 
     def forward(self, in_frame):
         face_tensor, eye_tensor, mouth_tensor = self.region_maker.process_batch(in_frame)
