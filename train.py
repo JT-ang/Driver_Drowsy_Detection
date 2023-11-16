@@ -6,6 +6,7 @@ from data import CustomDataset
 
 
 def train(model, data_set, epoch_num, device, lr=0.03, batch_size=2, reorder=True):
+    print("[TRAIN START]")
     model.to(device)
     model.train()
     paras = [para for para in model.predictor.classifier.parameters()]
@@ -33,9 +34,8 @@ def train(model, data_set, epoch_num, device, lr=0.03, batch_size=2, reorder=Tru
                 loss_val.backward()
                 optimizer.step()
                 epoch_loss += loss_val.item()
-            print("done one")
             if idx % 20 == 0:
-                print(f"{idx:03d} / {len(data_loader):03d}")
+                print(f"{idx * batch_size:03d} / {len(data_set):03d}")
                 grad_sum_list.append(check_sum(paras))
         print(f"[Epoch]: {epoch}, [Loss]: {epoch_loss / len(data_set):.4f}")
         print(f"Epoch {epoch:02d}/{epoch_num:02d}")
@@ -52,6 +52,7 @@ def check_sum(paras):
 
 
 def testacc(model, data_set, batch_size, device):
+    print("[TEST START]")
     model.to(device)
     model.eval()
     numer_workers = 4
@@ -73,9 +74,8 @@ def testacc(model, data_set, batch_size, device):
             correct_num = (torch.argmax(label, dim=1) == torch.argmax(pred_prob, dim=1)).sum()
             right_ans += correct_num
 
-            print("done one")
             if idx % 20 == 0:
-                print(f"{idx:03d} / {len(data_set):03d}")
+                print(f"{idx * batch_size:03d} / {len(data_set):03d}")
 
     accuracy = right_ans / len(data_set)
     average_loss = total_loss / len(data_set)
@@ -86,10 +86,13 @@ def testacc(model, data_set, batch_size, device):
 
 if __name__ == '__main__':
     r_device = torch.device('cuda')
+    save_mode = False
     model = DDnet(device=r_device)
     train_data_folder = "E:\\dataset\\train_set"
     dataset = CustomDataset(train_data_folder)
     # TODO: make the labels read from file, the device shouldn't change here
-    # train(model, dataset, 2, lr=0.01, device=r_device)
+    train(model, dataset, 2, lr=0.01, device=r_device)
     testacc(model, dataset, 2, device=r_device)
+    if save_mode:
+        torch.save(model.state_dict(), "weights/DDnet.pth")
     print("[Train Finished!]")
