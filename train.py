@@ -58,8 +58,7 @@ def testacc(model, data_set, batch_size, device=torch.device('cpu')):
     loss_func = torch.nn.CrossEntropyLoss(reduction='mean')
     data_loader = DataLoader(dataset=data_set, batch_size=batch_size, num_workers=numer_workers)
     total_loss = 0
-    correct_predictions = 0
-    total_predictions = 0
+    right_ans = 0
 
     with torch.no_grad():  # Disable gradient computation
         for idx, data in enumerate(data_loader):
@@ -71,15 +70,14 @@ def testacc(model, data_set, batch_size, device=torch.device('cpu')):
             loss_val = loss_func(pred_prob, label)
 
             total_loss += loss_val.item()
-            _, predicted_labels = torch.max(pred_prob, 1)
-            correct_predictions += (predicted_labels == label).sum().item()
-            total_predictions += len(label)
+            correct_num = (torch.argmax(label, dim=1) == torch.argmax(pred_prob, dim=1)).sum()
+            right_ans += correct_num
 
             print("done one")
             if idx % 20 == 0:
-                print(f"{idx:03d} / {len(data_loader):03d}")
+                print(f"{idx:03d} / {len(data_set):03d}")
 
-    accuracy = correct_predictions / total_predictions
+    accuracy = right_ans / len(data_set)
     average_loss = total_loss / len(data_set)
 
     print(f"Accuracy: {accuracy:.4f}")
@@ -92,6 +90,6 @@ if __name__ == '__main__':
     train_data_folder = "E:\\dataset\\train_set"
     dataset = CustomDataset(train_data_folder)
     # TODO: make the labels read from file
-    train(model, dataset, 2, device=r_device, lr=0.01)
+    # train(model, dataset, 2, device=r_device, lr=0.01)
     testacc(model, dataset, 2, r_device)
     print("[Train Finished!]")
