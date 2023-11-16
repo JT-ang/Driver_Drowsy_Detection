@@ -5,7 +5,7 @@ from model import DDnet, DDpredictor
 from data import CustomDataset
 
 
-def train(model, data_set, epoch_num, device=torch.device('cpu'), lr=0.03, batch_size=2, reorder=True):
+def train(model, data_set, epoch_num, device, lr=0.03, batch_size=2, reorder=True):
     model.to(device)
     model.train()
     paras = [para for para in model.predictor.classifier.parameters()]
@@ -51,9 +51,9 @@ def check_sum(paras):
     return res
 
 
-def testacc(model, data_set, batch_size, device=torch.device('cpu')):
-    model.eval()
+def testacc(model, data_set, batch_size, device):
     model.to(device)
+    model.eval()
     numer_workers = 4
     loss_func = torch.nn.CrossEntropyLoss(reduction='mean')
     data_loader = DataLoader(dataset=data_set, batch_size=batch_size, num_workers=numer_workers)
@@ -80,16 +80,16 @@ def testacc(model, data_set, batch_size, device=torch.device('cpu')):
     accuracy = right_ans / len(data_set)
     average_loss = total_loss / len(data_set)
 
-    print(f"Accuracy: {accuracy:.4f}")
+    print(f"Right:{right_ans}/{len(data_set)}, ACC:{accuracy * 100:.4f}%")
     print(f"Average Loss: {average_loss:.4f}")
 
 
 if __name__ == '__main__':
-    model = DDnet()
-    r_device = torch.device('cpu')
+    r_device = torch.device('cuda')
+    model = DDnet(device=r_device)
     train_data_folder = "E:\\dataset\\train_set"
     dataset = CustomDataset(train_data_folder)
-    # TODO: make the labels read from file
-    # train(model, dataset, 2, device=r_device, lr=0.01)
-    testacc(model, dataset, 2, r_device)
+    # TODO: make the labels read from file, the device shouldn't change here
+    # train(model, dataset, 2, lr=0.01, device=r_device)
+    testacc(model, dataset, 2, device=r_device)
     print("[Train Finished!]")

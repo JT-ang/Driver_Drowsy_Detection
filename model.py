@@ -11,7 +11,7 @@ from utils.dataloader import get_image_from_path, image_processor2
 
 
 class YOLODetector:
-    def __init__(self, model_path, classes, device=torch.device('cpu')):
+    def __init__(self, model_path, classes, device):
         self.classes = classes
         self.device = device
         self.model = attempt_load(model_path).to(self.device)
@@ -41,9 +41,9 @@ class YOLODetector:
         return image
 
     def process_batch(self, batch_images):
-        face_tensor = torch.empty(0)
-        eye_tensor = torch.empty(0)
-        mouth_tensor = torch.empty(0)
+        face_tensor = torch.empty(0).to(self.device)
+        eye_tensor = torch.empty(0).to(self.device)
+        mouth_tensor = torch.empty(0).to(self.device)
         preds = self.detect(batch_images.to(self.device))
 
         for k, pred in enumerate(preds):
@@ -136,7 +136,7 @@ class DDnet(nn.Module):
     output: a prob with 2 classes
     """
 
-    def __init__(self, device=torch.device('cpu')):
+    def __init__(self, device):
         super(DDnet, self).__init__()
         # TODO change your onnx model file path here
         self.device = device
@@ -154,7 +154,7 @@ class DDnet(nn.Module):
 
 if __name__ == '__main__':
     image_path = "./images/001.jpg"
-    device = torch.device('cpu')
+    device = torch.device('cuda')
     image = get_image_from_path(image_path)
     image = torch.from_numpy(image)
     model = DDnet(device)
