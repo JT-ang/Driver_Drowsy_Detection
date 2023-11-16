@@ -5,7 +5,7 @@ from model import DDnet, DDpredictor
 from data import CustomDataset
 
 
-def train(model, data_set, epoch_num, device, lr=0.03, batch_size=2, reorder=True):
+def train(model, data_set, epoch_num, device, lr=0.03, batch_size=4, reorder=True):
     print("[TRAIN START]")
     model.to(device)
     model.train()
@@ -34,7 +34,7 @@ def train(model, data_set, epoch_num, device, lr=0.03, batch_size=2, reorder=Tru
                 loss_val.backward()
                 optimizer.step()
                 epoch_loss += loss_val.item()
-            if idx % 20 == 0:
+            if idx % 10 == 0:
                 print(f"{idx * batch_size:03d} / {len(data_set):03d}")
                 grad_sum_list.append(check_sum(paras))
         print(f"[Epoch]: {epoch}, [Loss]: {epoch_loss / len(data_set):.4f}")
@@ -56,7 +56,8 @@ def testacc(model, data_set, batch_size, device):
     model.to(device)
     model.eval()
     numer_workers = 4
-    loss_func = torch.nn.CrossEntropyLoss(reduction='mean')
+    # loss_func = torch.nn.CrossEntropyLoss(reduction='mean')
+    loss_func = torch.nn.BCELoss(reduction="mean")
     data_loader = DataLoader(dataset=data_set, batch_size=batch_size, num_workers=numer_workers)
     total_loss = 0
     right_ans = 0
@@ -91,7 +92,7 @@ if __name__ == '__main__':
     train_data_folder = "E:\\dataset\\train_set"
     dataset = CustomDataset(train_data_folder)
     # TODO: make the labels read from file, the device shouldn't change here
-    train(model, dataset, 2, lr=0.01, device=r_device)
+    train(model, dataset, 5, lr=0.03, device=r_device)
     testacc(model, dataset, 2, device=r_device)
     if save_mode:
         torch.save(model.state_dict(), "weights/DDnet.pth")

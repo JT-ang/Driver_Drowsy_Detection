@@ -117,7 +117,7 @@ class DDpredictor(nn.Module):
 
             nn.Dropout(),
             nn.Linear(32, 2),
-            nn.Softmax(dim=1)
+            nn.Sigmoid()
         )
 
     def forward(self, eye, mouth):
