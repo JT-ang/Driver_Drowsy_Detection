@@ -1,22 +1,25 @@
-import torch.utils.data
 import torch.optim
-from torch.utils.data import Dataset, DataLoader
-from model import DDnet, DDpredictor
+from model import DDnet
+import torch.utils.data
 from data import CustomDataset
+from torch.utils.data import DataLoader
 
 
-def train(model, data_set, epoch_num, device, lr=0.03, batch_size=4, reorder=True):
+def train(model, data_set, epoch_num, device, lr=0.01, batch_size=2, reorder=True):
     print("[TRAIN START]")
     model.to(device)
     model.train()
     paras = [para for para in model.predictor.classifier.parameters()]
     loss_list = []
     grad_sum_list = []
-    numer_workers = 4
-    # only update the weights of the classifier
-    loss_func = torch.nn.CrossEntropyLoss(reduction='mean')
+    num_workers = 4
+
+    loss_func = torch.nn.BCELoss(reduction="mean")
+    # loss_func = torch.nn.CrossEntropyLoss(reduction='mean')
     optimizer = torch.optim.SGD(paras, lr=lr)
-    data_loader = DataLoader(dataset=data_set, batch_size=batch_size, shuffle=reorder, num_workers=numer_workers)
+
+    data_loader = DataLoader(dataset=data_set, batch_size=batch_size, shuffle=reorder, num_workers=num_workers)
+
     for epoch in range(0, epoch_num):
         epoch_loss = 0.0
 
@@ -24,9 +27,8 @@ def train(model, data_set, epoch_num, device, lr=0.03, batch_size=4, reorder=Tru
             image, label = data
             image = image.to(device)
             label = label.to(device)
-            # 清零
             optimizer.zero_grad()
-            # 训练开始
+            # train
             with torch.set_grad_enabled(True):
                 pred_prob = model(image)
                 # ans = torch.max(pred_prob, dim=1)
@@ -37,8 +39,8 @@ def train(model, data_set, epoch_num, device, lr=0.03, batch_size=4, reorder=Tru
             if idx % 10 == 0:
                 print(f"{idx * batch_size:03d} / {len(data_set):03d}")
                 grad_sum_list.append(check_sum(paras))
-        print(f"[Epoch]: {epoch}, [Loss]: {epoch_loss / len(data_set):.4f}")
-        print(f"Epoch {epoch:02d}/{epoch_num:02d}")
+        print(f"[Epoch]: {epoch+1}, [Loss]: {epoch_loss / len(data_set):.4f}")
+        print(f"Epoch {epoch+1:02d}/{epoch_num:02d}")
         loss_list.append(epoch_loss / len(data_set))
     print(f"loss list{loss_list}")
     print(f"weight list{grad_sum_list}")
@@ -55,14 +57,14 @@ def testacc(model, data_set, batch_size, device):
     print("[TEST START]")
     model.to(device)
     model.eval()
-    numer_workers = 4
-    # loss_func = torch.nn.CrossEntropyLoss(reduction='mean')
+    num_workers = 4
     loss_func = torch.nn.BCELoss(reduction="mean")
-    data_loader = DataLoader(dataset=data_set, batch_size=batch_size, num_workers=numer_workers)
+    # loss_func = torch.nn.CrossEntropyLoss(reduction='mean')
+    data_loader = DataLoader(dataset=data_set, batch_size=batch_size, num_workers=num_workers)
     total_loss = 0
     right_ans = 0
 
-    with torch.no_grad():  # Disable gradient computation
+    with torch.no_grad():
         for idx, data in enumerate(data_loader):
             image, label = data
             image = image.to(device)
@@ -88,12 +90,16 @@ def testacc(model, data_set, batch_size, device):
 if __name__ == '__main__':
     r_device = torch.device('cuda')
     save_mode = False
-    model = DDnet(device=r_device)
-    train_data_folder = "E:\\dataset\\train_set"
-    dataset = CustomDataset(train_data_folder)
+    train_data_folder = "C:\\Users\\admin\\Desktop\\data_Driver"
+    test_data_folder = "C:\\Users\\admin\\Desktop\\data"
+    model_path = "./weights/yolov5n_best.pt"
+
+    model = DDnet(device=r_device, yolo_path=model_path)
+    dataset_train = CustomDataset(train_data_folder)
+    dataset_test = CustomDataset(test_data_folder)
     # TODO: make the labels read from file, the device shouldn't change here
-    train(model, dataset, 5, lr=0.03, device=r_device)
-    testacc(model, dataset, 2, device=r_device)
+    train(model, dataset_train, epoch_num=20, lr=0.01, batch_size=2, device=r_device)
+    testacc(model, dataset_test, 2, device=r_device)
     if save_mode:
         torch.save(model.state_dict(), "weights/DDnet.pth")
     print("[Train Finished!]")
