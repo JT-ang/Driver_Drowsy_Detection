@@ -17,11 +17,13 @@ class Logger:
         print(log_record)
 
     def flush_buffer(self):
+        if self.fd.closed:
+            raise ValueError("FileDescriptor Not Open")
         for log in self.log_buffer:
             self.fd.write(log)
 
     def open(self):
-        self.fd = open(self.res_path,'a')
+        self.fd = open(self.res_path, 'a')
         self.log_cli("Log Has Opened")
 
     def close(self):
