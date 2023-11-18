@@ -7,7 +7,7 @@ from torchvision import transforms
 
 transform = transforms.Compose([
     transforms.ToTensor(),   # Convert the input to a tensor
-    transforms.Normalize((0.5,), (0.5,))   # Normalize the tensor
+    transforms.Normalize(0.5, 0.5)
 ])
 
 if __name__ == '__main__':
@@ -20,7 +20,8 @@ if __name__ == '__main__':
     frames_tensor = torch.stack([transform(frame) for frame in frames])
     # define model
     r_device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    model = DDnet(r_device)
+    model = DDnet(r_device, "./weights/yolov5n_best.pt")
+    # model.load_state_dict(torch.load("TrainedWeights.pth"))
     # predict
     res = model(frames_tensor)
     print(res)

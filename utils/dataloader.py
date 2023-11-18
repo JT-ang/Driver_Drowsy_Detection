@@ -103,7 +103,7 @@ def image_processor2(img):
     img = img.cpu().numpy()
     img = img.squeeze()
     img = img.transpose((1, 2, 0))
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     or_img = (img * 255.0).astype(np.uint8)
 
     return or_img

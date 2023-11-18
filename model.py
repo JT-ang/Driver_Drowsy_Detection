@@ -12,14 +12,14 @@ from utils.dataloader import get_image_from_path, image_processor2
 
 class YOLODetector:
     def __init__(self, model_path, classes, device):
-        self.classes = classes
         self.device = device
+        self.classes = classes
         self.model = attempt_load(model_path).to(self.device)
         self.model.requires_grad_(False)
 
     def detect(self, image_tensor):
         output = self.model(image_tensor)
-        preds = non_max_suppression(output, 0.5, 0.5)
+        preds = non_max_suppression(output, 0.4, 0.4)
         return preds
 
     def draw(self, image_tensor, box_data):
@@ -44,19 +44,23 @@ class YOLODetector:
         face_tensor = torch.empty(0).to(self.device)
         eye_tensor = torch.empty(0).to(self.device)
         mouth_tensor = torch.empty(0).to(self.device)
-        preds = self.detect(batch_images.to(self.device))
+        batch_images = batch_images.to(self.device)
+        preds = self.detect(batch_images)
 
         for k, pred in enumerate(preds):
-            # img = self.draw(batch_images[k], pred)
-            # cv2.imshow("11", img)
-            # cv2.waitKey(0)
             check_set = torch.unique(pred[:, 5])
             if len(pred) == 0:
+                img = self.draw(batch_images[k], pred)
+                cv2.imshow("检测效果图", img)
+                cv2.waitKey(0)
                 print('没有发现物体')
                 exit(0)
                 # TODO: 提醒操作者脸部存在遮挡
                 return None
             if len(check_set) != 3:
+                img = self.draw(batch_images[k], pred)
+                cv2.imshow("检测效果图", img)
+                cv2.waitKey(0)
                 print("集合大小不等于3")
                 exit(0)
                 return None
@@ -64,27 +68,31 @@ class YOLODetector:
             face_score = 0
             eye_score = 0
             mouth_score = 0
+            face_image = torch.empty(0).to(self.device)
+            eye_image = torch.empty(0).to(self.device)
+            mouth_image = torch.empty(0).to(self.device)
             for i in range(len(pred)):
                 x1, y1, x2, y2, score, cls = pred[i]
-                x1, y1, x2, y2 = int(x1.item()), int(y1.item()), int(x2.item()), int(y2.item())
+                x1, y1, x2, y2 = max(0, int(x1)), max(0, int(y1)), max(0, int(x2)), max(0, int(y2))
                 if cls == 0:
                     if score > face_score:
                         face_score = score
                         face_image = batch_images[k, :, y1:y2, x1:x2]
-                        face_image = TF.resize(face_image, [227, 227]).unsqueeze(0)
-                        face_tensor = torch.cat((face_tensor, face_image))
+                        face_image = TF.resize(face_image, [224, 224]).unsqueeze(0)
                 elif cls == 1:
                     if score > eye_score:
                         eye_score = score
                         eye_image = batch_images[k, :, y1:y2, x1:x2]
-                        eye_image = TF.resize(eye_image, [227, 227]).unsqueeze(0)
-                        eye_tensor = torch.cat((eye_tensor, eye_image))
+                        eye_image = TF.resize(eye_image, [224, 224]).unsqueeze(0)
                 else:
                     if score > mouth_score:
                         mouth_score = score
                         mouth_image = batch_images[k, :, y1:y2, x1:x2]
-                        mouth_image = TF.resize(mouth_image, [227, 227]).unsqueeze(0)
-                        mouth_tensor = torch.cat((mouth_tensor, mouth_image))
+                        mouth_image = TF.resize(mouth_image, [224, 224]).unsqueeze(0)
+
+            face_tensor = torch.cat((face_tensor, face_image))
+            eye_tensor = torch.cat((eye_tensor, eye_image))
+            mouth_tensor = torch.cat((mouth_tensor, mouth_image))
 
         return face_tensor, eye_tensor, mouth_tensor
 
@@ -136,29 +144,27 @@ class DDnet(nn.Module):
     output: a prob with 2 classes
     """
 
-    def __init__(self, device):
+    def __init__(self, device, yolo_path):
         super(DDnet, self).__init__()
         # TODO change your onnx model file path here
         self.device = device
-        model_path = "./weights/yolov5n_face.pt"
-        CLASSES = ['face', 'eye', 'mouth']
-        self.region_maker = YOLODetector(model_path, device=self.device, classes=CLASSES)
-        self.predictor = DDpredictor()
+        self.yolo_path = yolo_path
+        classes = ['face', 'eye', 'mouth']
+        self.region_maker = YOLODetector(yolo_path, device=self.device, classes=classes)
+        self.predictor = DDpredictor().to(device=self.device)
         self.region_maker.model.requires_grad_(False)
         self.predictor.classifier.requires_grad_(True)
 
     def forward(self, in_frame):
         face_tensor, eye_tensor, mouth_tensor = self.region_maker.process_batch(in_frame)
-        return self.predictor(eye_tensor, mouth_tensor)
+        return self.predictor(eye_tensor, face_tensor)
 
 
 if __name__ == '__main__':
-    image_path = "./images/001.jpg"
+    image_path = "./images/test.jpg"
     device = torch.device('cuda')
     image = get_image_from_path(image_path)
     image = torch.from_numpy(image)
-    model = DDnet(device)
+    model = DDnet(device, "./weights/yolov5n_best.pt")
     predict = model(image)
     print(predict)
-
-

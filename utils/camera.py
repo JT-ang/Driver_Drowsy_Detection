@@ -65,3 +65,4 @@ if __name__ == '__main__':
     frame_interval = 10
     batch_size = 2
     frames = camera.get_frames(frame_interval, batch_size)
+    camera.show_video()
