@@ -19,7 +19,7 @@ class YOLODetector:
 
     def detect(self, image_tensor):
         output = self.model(image_tensor)
-        preds = non_max_suppression(output, 0.45, 0.45)
+        preds = non_max_suppression(output, 0.4, 0.4)
         return preds
 
     def draw(self, image_tensor, box_data):
@@ -50,6 +50,9 @@ class YOLODetector:
         for k, pred in enumerate(preds):
             check_set = torch.unique(pred[:, 5])
             if len(pred) == 0:
+                img = self.draw(batch_images[k], pred)
+                cv2.imshow("检测效果图", img)
+                cv2.waitKey(0)
                 print('没有发现物体')
                 exit(0)
                 # TODO: 提醒操作者脸部存在遮挡
@@ -70,7 +73,7 @@ class YOLODetector:
             mouth_image = torch.empty(0).to(self.device)
             for i in range(len(pred)):
                 x1, y1, x2, y2, score, cls = pred[i]
-                x1, y1, x2, y2 = int(x1.item()), int(y1.item()), int(x2.item()), int(y2.item())
+                x1, y1, x2, y2 = max(0, int(x1)), max(0, int(y1)), max(0, int(x2)), max(0, int(y2))
                 if cls == 0:
                     if score > face_score:
                         face_score = score

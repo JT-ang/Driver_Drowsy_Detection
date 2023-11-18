@@ -90,16 +90,16 @@ def testacc(model, data_set, batch_size, device):
 if __name__ == '__main__':
     r_device = torch.device('cuda')
     save_mode = False
-    train_data_folder = "C:\\Users\\admin\\Desktop\\data_Driver"
-    test_data_folder = "C:\\Users\\admin\\Desktop\\data"
+    train_data_folder = "C:\\Users\\admin\\Desktop\\trian_400"
+    test_data_folder = "C:\\Users\\admin\\Desktop\\val"
     model_path = "./weights/yolov5n_best.pt"
 
     model = DDnet(device=r_device, yolo_path=model_path)
     dataset_train = CustomDataset(train_data_folder)
     dataset_test = CustomDataset(test_data_folder)
     # TODO: make the labels read from file, the device shouldn't change here
-    train(model, dataset_train, epoch_num=20, lr=0.01, batch_size=2, device=r_device)
-    testacc(model, dataset_test, 2, device=r_device)
+    train(model, dataset_train, epoch_num=10, lr=0.03, batch_size=4, device=r_device)
+    testacc(model, dataset_test, 4, device=r_device)
     if save_mode:
         torch.save(model.state_dict(), "weights/DDnet.pth")
     print("[Train Finished!]")
