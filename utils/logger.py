@@ -1,15 +1,19 @@
+import datetime
 class Logger:
     def __init__(self, log_file_path):
         self.res_path = log_file_path
         self.log_buffer = []
         self.fd = None
+        self.open()
 
     def log_info(self, context):
-        log_record = "LOG[INFO]: " + context
+        current_time = datetime.datetime.now().strftime("%y::%m::%d::%H::%M")
+        log_record = "[TIME]: " + current_time + " LOG[INFO]: " + context + '\n'
         self.log_buffer.append(log_record)
 
     def log_warn(self, context):
-        log_record = "LOG[WARN]: " + context
+        current_time = datetime.datetime.now().strftime("%y::%m::%d::%H::%M")
+        log_record = "[TIME]: " + current_time + " LOG[WARN]: " + context + '\n'
         self.log_buffer.append(log_record)
 
     def log_cli(self, context):

@@ -40,7 +40,7 @@ class YOLODetector:
                         0.6, (0, 0, 255), 2)
         return image
 
-    def process_batch(self, batch_images):
+    def process_batch(self, batch_images, is_trained=True):
         face_tensor = torch.empty(0).to(self.device)
         eye_tensor = torch.empty(0).to(self.device)
         mouth_tensor = torch.empty(0).to(self.device)
@@ -50,21 +50,24 @@ class YOLODetector:
         for k, pred in enumerate(preds):
             check_set = torch.unique(pred[:, 5])
             if len(pred) == 0:
-                img = self.draw(batch_images[k], pred)
-                cv2.imshow("检测效果图", img)
-                cv2.waitKey(0)
-                print('没有发现物体')
-                exit(0)
-                # TODO: 提醒操作者脸部存在遮挡
-                return None
+                if is_trained:
+                    img = self.draw(batch_images[k], pred)
+                    cv2.imshow("检测效果图", img)
+                    cv2.waitKey(0)
+                    print('没有发现物体')
+                    exit(0)
+                    # TODO: 提醒操作者脸部存在遮挡
+                else:
+                    return face_tensor, eye_tensor, mouth_tensor
             if len(check_set) != 3:
-                img = self.draw(batch_images[k], pred)
-                cv2.imshow("检测效果图", img)
-                cv2.waitKey(0)
-                print("集合大小不等于3")
-                exit(0)
-                return None
-
+                if is_trained:
+                    img = self.draw(batch_images[k], pred)
+                    cv2.imshow("检测效果图", img)
+                    cv2.waitKey(0)
+                    print("集合大小不等于3")
+                    exit(0)
+                else:
+                    return face_tensor, eye_tensor, mouth_tensor
             face_score = 0
             eye_score = 0
             mouth_score = 0
@@ -97,26 +100,46 @@ class YOLODetector:
         return face_tensor, eye_tensor, mouth_tensor
 
 
+class SELayer(nn.Module):
+    def __init__(self, channel, reduction=16):
+        super(SELayer, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Sequential(
+            nn.Linear(channel, channel // reduction),
+            nn.ReLU(inplace=True),
+            nn.Linear(channel // reduction, channel),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        b, c, _, _ = x.size()
+        y = self.avg_pool(x).view(b, c)
+        y = self.fc(y).view(b, c, 1, 1)
+        return x * y
+
+
 class DDpredictor(nn.Module):
     """
     Classifier: Core part of the DDnet
     """
 
     def __init__(self):
-        super().__init__()
-        # TODO change the pretrained = True
-        self.eye_alex = models.alexnet(weights=models.AlexNet_Weights.IMAGENET1K_V1)
-        self.eye_alex.classifier = nn.Sequential()
-        self.eye_alex.requires_grad_(False)
+        super(DDpredictor, self).__init__()
+        self.eye_mobilenet = models.mobilenet_v3_small(weights=models.MobileNet_V3_Small_Weights.IMAGENET1K_V1)
+        self.eye_mobilenet.classifier = nn.Sequential()
+        self.eye_mobilenet.requires_grad_(False)
 
-        self.mouth_alex = models.alexnet(weights=models.AlexNet_Weights.IMAGENET1K_V1)
-        self.mouth_alex.classifier = nn.Sequential()
-        self.mouth_alex.requires_grad_(False)
+        self.mouth_mobilenet = models.mobilenet_v3_small(weights=models.MobileNet_V3_Small_Weights.IMAGENET1K_V1)
+        self.mouth_mobilenet.classifier = nn.Sequential()
+        self.mouth_mobilenet.requires_grad_(False)
+
+        self.eye_se = SELayer(576)
+        self.mouth_se = SELayer(576)
 
         self.classifier = nn.Sequential(
             nn.Flatten(),
             nn.Dropout(),
-            nn.Linear(256 * 6 * 6 * 2, 128),
+            nn.Linear(576 * 2, 128),
             nn.ReLU(inplace=True),
 
             nn.Dropout(),
@@ -129,10 +152,15 @@ class DDpredictor(nn.Module):
         )
 
     def forward(self, eye, mouth):
-        eye_fea = self.eye_alex(eye)
-        mouth_fea = self.mouth_alex(mouth)
-        eye_fea = eye_fea.view(eye_fea.size(0), -1)
-        mouth_fea = mouth_fea.view(mouth_fea.size(0), -1)
+        eye_fea = self.eye_mobilenet.features(eye)
+        mouth_fea = self.mouth_mobilenet.features(mouth)
+
+        eye_fea = self.eye_se(eye_fea)
+        mouth_fea = self.mouth_se(mouth_fea)
+
+        eye_fea = eye_fea.mean([2, 3])  # Global average pooling
+        mouth_fea = mouth_fea.mean([2, 3])  # Global average pooling
+
         fea = torch.cat([eye_fea, mouth_fea], dim=1)
         return self.classifier(fea)
 
@@ -144,7 +172,7 @@ class DDnet(nn.Module):
     output: a prob with 2 classes
     """
 
-    def __init__(self, device, yolo_path):
+    def __init__(self, device, yolo_path, is_trained=True):
         super(DDnet, self).__init__()
         # TODO change your onnx model file path here
         self.device = device
