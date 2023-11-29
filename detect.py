@@ -27,7 +27,7 @@ if __name__ == '__main__':
     # --- init the camera ---
     camera = Camera(recorder)
     frame_interval = 1
-    batch_size = 10
+    batch_size = 5
     # --- camera heat ---
     camera.init_video()
     recorder.log_cli('START')
@@ -36,13 +36,14 @@ if __name__ == '__main__':
         fir = time.time()
         frames = camera.get_frames(frame_interval, batch_size)
         t_frames = torch.stack([transform(frame) for frame in frames])
+        # camera.show_video()
         sec = time.time()
         res = model(t_frames)
         res = torch.argmax(res, dim=1).sum()
         thr = time.time()
-        if res >= 6:
-            recorder.log_cli('Warning!')
+        if res >= 3:
+            recorder.log_warn('Warning!')
         else:
             recorder.log_cli('Normal!')
-        recorder.log_cli(f"CV Cost: {sec - fir:.3f}s/Batch")
-        recorder.log_cli(f"Model Cost: {thr - sec:.3f}s/Batch")
+        # recorder.log_info(f"CV Cost: {sec - fir:.3f}s/Batch")
+        recorder.log_info(f"Time Cost: {thr - sec:.3f}s/Batch")

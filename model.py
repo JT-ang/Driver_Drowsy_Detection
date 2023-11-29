@@ -19,7 +19,7 @@ class YOLODetector:
 
     def detect(self, image_tensor):
         output = self.model(image_tensor)
-        preds = non_max_suppression(output, 0, 0)
+        preds = non_max_suppression(output, 0.4, 0.4)
         return preds
 
     def draw(self, image_tensor, box_data):
@@ -30,8 +30,8 @@ class YOLODetector:
         classes = box_data[..., 5].astype(np.int32)
         for box, score, cl in zip(boxes, scores, classes):
             top, left, right, bottom = box
-            print('class: {}, score: {}'.format(self.classes[cl], score))
-            print('box coordinate left,top,right,down: [{}, {}, {}, {}]'.format(top, left, right, bottom))
+            # print('class: {}, score: {}'.format(self.classes[cl], score))
+            # print('box coordinate left,top,right,down: [{}, {}, {}, {}]'.format(top, left, right, bottom))
 
             cv2.rectangle(image, (top, left), (right, bottom), (255, 0, 0), 2)
             cv2.putText(image, '{0} {1:.2f}'.format(self.classes[cl], score),
@@ -49,6 +49,10 @@ class YOLODetector:
         bs, chl = batch_images.shape[0], batch_images.shape[1]
 
         for k, pred in enumerate(preds):
+            img = self.draw(batch_images[k], pred)
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            cv2.imshow("检测效果图", img)
+            cv2.waitKey(10)
             check_set = torch.unique(pred[:, 5])
             if len(pred) == 0 or len(check_set) != 3:
                 if is_trained:
