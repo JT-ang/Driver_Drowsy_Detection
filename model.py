@@ -19,7 +19,7 @@ class YOLODetector:
 
     def detect(self, image_tensor):
         output = self.model(image_tensor)
-        preds = non_max_suppression(output, 0.4, 0.4)
+        preds = non_max_suppression(output, 0, 0)
         return preds
 
     def draw(self, image_tensor, box_data):
@@ -184,7 +184,7 @@ class DDnet(nn.Module):
 
     def forward(self, in_frame):
         face_tensor, eye_tensor, mouth_tensor = self.region_maker.process_batch(in_frame, self.is_train)
-        return self.predictor(eye_tensor, face_tensor)
+        return self.predictor(eye_tensor, mouth_tensor)
 
 
 if __name__ == '__main__':
