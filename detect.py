@@ -41,8 +41,8 @@ if __name__ == '__main__':
         res = torch.argmax(res, dim=1).sum()
         thr = time.time()
         if res >= 6:
-            recorder.log_cli('Warning!')
+            recorder.log_warn('Warning!')
         else:
             recorder.log_cli('Normal!')
-        recorder.log_cli(f"CV Cost: {sec - fir:.3f}s/Batch")
-        recorder.log_cli(f"Model Cost: {thr - sec:.3f}s/Batch")
+        recorder.log_info(f"CV Cost: {sec - fir:.3f}s/Batch")
+        recorder.log_info(f"Model Cost: {thr - sec:.3f}s/Batch")
