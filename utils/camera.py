@@ -14,16 +14,25 @@ class Camera:
         self.video = cv2.VideoCapture(self.origin)
         self.logger.log_cli(f'Camera Inited!')
 
-    def get_frames(self, f_gap, bs, show_images=False):
+    def init_video(self):
+        self.logger.log_cli('Video Heating!')
+        count = 0
+        while count < 60:
+            ret, frame = self.video.read()
+            if not ret:
+                break
+            count += 1
+        self.logger.log_cli('Video Inited!')
+
+    def get_frames(self, f_gap, bs):
         """
-        :param show_images:
         :param f_gap:
         :param bs:
         @details press 'q' to quit the camera in show mode
         """
         count = 0
         frame_num = 0
-        res_frames = []
+        self.frame_buffer = []
 
         if not self.video.isOpened():
             self.logger.log_cli(f"Error Opening Video Capture!")
@@ -37,11 +46,11 @@ class Camera:
             count += 1
             if count % f_gap == 0:
                 frame_num += 1
-                res_frames.append(frame)
-                if len(res_frames) >= bs:
+                self.frame_buffer.append(frame)
+                if len(self.frame_buffer) >= bs:
                     break
 
-        return res_frames
+        return self.frame_buffer
 
     def save_frames(self, folder_path):
         os.makedirs(folder_path, exist_ok=True)
@@ -55,7 +64,7 @@ class Camera:
     def show_video(self):
         for frame in self.frame_buffer:
             cv2.imshow("Video", frame)
-            if cv2.waitKey(1000) & 0xFF == ord('n'):
+            if cv2.waitKey(0) & 0xFF == ord('n'):
                 break
 
         cv2.destroyAllWindows()
@@ -63,3 +72,11 @@ class Camera:
     def close(self):
         self.video.release()
         print('Camera Closed!')
+
+
+# if __name__ == '__main__':
+    # logger = Logger('./info.txt')
+    # camera = Camera(logger)
+    # camera.get_frames(1, 5)
+    # # camera.save_frames('D:\\Data\\dataset\\drowsy')
+    # camera.show_video()
