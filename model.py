@@ -11,8 +11,8 @@ from utils.dataloader import get_image_from_path, image_processor2
 
 
 class YOLODetector:
-    def __init__(self, model_path, classes, device):
-        self.device = device
+    def __init__(self, model_path, classes, o_device):
+        self.device = o_device
         self.classes = classes
         self.model = attempt_load(model_path).to(self.device)
         self.model.requires_grad_(False)
@@ -46,28 +46,25 @@ class YOLODetector:
         mouth_tensor = torch.empty(0).to(self.device)
         batch_images = batch_images.to(self.device)
         preds = self.detect(batch_images)
+        bs, chl = batch_images.shape[0], batch_images.shape[1]
 
         for k, pred in enumerate(preds):
             check_set = torch.unique(pred[:, 5])
-            if len(pred) == 0:
+            if len(pred) == 0 or len(check_set) != 3:
                 if is_trained:
                     img = self.draw(batch_images[k], pred)
                     cv2.imshow("检测效果图", img)
                     cv2.waitKey(0)
-                    print('没有发现物体')
+                    print(f'[ERROR]Detect: Pred{len(pred)}, Object:{len(check_set)}')
                     exit(0)
                     # TODO: 提醒操作者脸部存在遮挡
                 else:
+                    print('[Detect] Jump Invalid Frames')
+                    face_tensor = torch.zeros(size=(bs, chl, 224, 224), device=self.device)
+                    eye_tensor = torch.zeros(size=(bs, chl, 224, 224), device=self.device)
+                    mouth_tensor = torch.zeros(size=(bs, chl, 224, 224), device=self.device)
                     return face_tensor, eye_tensor, mouth_tensor
-            if len(check_set) != 3:
-                if is_trained:
-                    img = self.draw(batch_images[k], pred)
-                    cv2.imshow("检测效果图", img)
-                    cv2.waitKey(0)
-                    print("集合大小不等于3")
-                    exit(0)
-                else:
-                    return face_tensor, eye_tensor, mouth_tensor
+
             face_score = 0
             eye_score = 0
             mouth_score = 0
@@ -172,20 +169,21 @@ class DDnet(nn.Module):
     output: a prob with 2 classes
     """
 
-    def __init__(self, device, y_path, is_trained=True):
+    def __init__(self, o_device, y_path, is_train=True):
         super(DDnet, self).__init__()
-        self.device = device
+        self.device = o_device
         self.yolo_path = y_path
+        self.is_train = is_train
         classes = ['face', 'eye', 'mouth']
         # --- init the torch module ---
-        self.region_maker = YOLODetector(self.yolo_path, device=self.device, classes=classes)
+        self.region_maker = YOLODetector(self.yolo_path, o_device=self.device, classes=classes)
         self.predictor = DDpredictor().to(device=self.device)
         # --- set grad requirements ---
         self.region_maker.model.requires_grad_(False)
-        self.predictor.classifier.requires_grad_(is_trained)
+        self.predictor.classifier.requires_grad_(True)
 
     def forward(self, in_frame):
-        face_tensor, eye_tensor, mouth_tensor = self.region_maker.process_batch(in_frame)
+        face_tensor, eye_tensor, mouth_tensor = self.region_maker.process_batch(in_frame, self.is_train)
         return self.predictor(eye_tensor, face_tensor)
 
 

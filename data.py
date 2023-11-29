@@ -57,10 +57,11 @@ def make_label_tensors(path):
     if num == -1:
         raise ValueError("Wrong Dataset init with folder wrong")
     if path.find("drowsy") != -1:
-        # generate one thousand tensors same as the tensor bellow
-        labels = [torch.tensor([0, 1.0]) for _ in range(num)]
+        # drowsy
+        labels = [torch.tnesor([0, 1.0]) for _ in range(num)]
         return labels
     else:
+        # normal
         labels = [torch.tensor([1.0, 0]) for _ in range(num)]
         return labels
 

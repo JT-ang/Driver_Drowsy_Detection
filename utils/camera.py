@@ -7,40 +7,41 @@ class Camera:
     camera_origin: the source of the frame, such as : webcam, mp4
     """
 
-    def __init__(self, camera_origin=0):
-        self.origin = camera_origin
+    def __init__(self, logger, camera_origin=0):
+        self.logger = logger
         self.frame_buffer = []
+        self.origin = camera_origin
+        self.video = cv2.VideoCapture(self.origin)
+        self.logger.log_cli(f'Camera Inited!')
 
-    def get_frames(self, frame_interval, batch_size, show_images=False):
+    def get_frames(self, f_gap, bs, show_images=False):
         """
-        :param frame_interval:
-        :param batch_size:
-        @details press 'q' to quit the camera
+        :param show_images:
+        :param f_gap:
+        :param bs:
+        @details press 'q' to quit the camera in show mode
         """
-        video = cv2.VideoCapture(self.origin)
         count = 0
         frame_num = 0
+        res_frames = []
 
-        if not video.isOpened():
-            print("Error opening video capture!")
+        if not self.video.isOpened():
+            self.logger.log_cli(f"Error Opening Video Capture!")
             return
 
         # Read frames
-        while video.isOpened():
-            ret, frame = video.read()
+        while self.video.isOpened():
+            ret, frame = self.video.read()
             if not ret:
                 break
             count += 1
-            if count % frame_interval == 0:
+            if count % f_gap == 0:
                 frame_num += 1
-                self.frame_buffer.append(frame)
-                if len(self.frame_buffer) >= batch_size:
+                res_frames.append(frame)
+                if len(res_frames) >= bs:
                     break
-        # Realise
-        video.release()
-        cv2.destroyAllWindows()
 
-        return self.frame_buffer
+        return res_frames
 
     def save_frames(self, folder_path):
         os.makedirs(folder_path, exist_ok=True)
@@ -49,7 +50,7 @@ class Camera:
             frame_output_path = os.path.join(folder_path, f"frame_{i + 1}.jpg")
             cv2.imwrite(frame_output_path, frame)
 
-        print("Frames saved successfully!")
+        self.logger.log_cli(f"Frames Saved Successfully!")
 
     def show_video(self):
         for frame in self.frame_buffer:
@@ -59,10 +60,6 @@ class Camera:
 
         cv2.destroyAllWindows()
 
-
-if __name__ == '__main__':
-    camera = Camera(0)
-    frame_interval = 10
-    batch_size = 2
-    frames = camera.get_frames(frame_interval, batch_size)
-    camera.show_video()
+    def close(self):
+        self.video.release()
+        print('Camera Closed!')
