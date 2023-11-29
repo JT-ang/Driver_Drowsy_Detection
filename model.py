@@ -172,16 +172,17 @@ class DDnet(nn.Module):
     output: a prob with 2 classes
     """
 
-    def __init__(self, device, yolo_path, is_trained=True):
+    def __init__(self, device, y_path, is_trained=True):
         super(DDnet, self).__init__()
-        # TODO change your onnx model file path here
         self.device = device
-        self.yolo_path = yolo_path
+        self.yolo_path = y_path
         classes = ['face', 'eye', 'mouth']
-        self.region_maker = YOLODetector(yolo_path, device=self.device, classes=classes)
+        # --- init the torch module ---
+        self.region_maker = YOLODetector(self.yolo_path, device=self.device, classes=classes)
         self.predictor = DDpredictor().to(device=self.device)
+        # --- set grad requirements ---
         self.region_maker.model.requires_grad_(False)
-        self.predictor.classifier.requires_grad_(True)
+        self.predictor.classifier.requires_grad_(is_trained)
 
     def forward(self, in_frame):
         face_tensor, eye_tensor, mouth_tensor = self.region_maker.process_batch(in_frame)

@@ -88,7 +88,7 @@ def testacc(model, data_set, batch_size, device):
 if __name__ == '__main__':
     r_device = torch.device('cuda')
     save_mode = True
-    model = DDnet(device=r_device, yolo_path="./weights/yolov5n_best.pt")
+    model = DDnet(device=r_device, y_path="./weights/yolov5n_best.pt")
     train_data_folder = "D:\\Data\\dataset"
     dataset = CustomDataset(train_data_folder)
     # TODO: make the labels read from file, the device shouldn't change here
