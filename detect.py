@@ -19,14 +19,14 @@ if __name__ == '__main__':
     r_device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     yolo_path = './weights/yolov5n_best.pt'
     predictor_path = './weights/DDnet.pth'
-    model = DDnet(r_device, yolo_path, False)
+    model = DDnet(r_device, yolo_path, True)
     model.load_state_dict(torch.load('weights/DDnet.pth'))
     # model.requires_grad_(False)
     recorder.log_cli('Init The Camera')
     # --- init the camera ---
     camera = Camera(recorder)
-    frame_interval = 1
-    batch_size = 1
+    frame_interval = 2
+    batch_size = 5
     recorder.log_cli('START')
     # --- START ---
     while True:
@@ -38,3 +38,4 @@ if __name__ == '__main__':
         ed = time.time()
         print(res)
         recorder.log_cli(f"Time Cost: {ed - st:.3f}s/Batch")
+        break
