@@ -25,9 +25,9 @@ if __name__ == '__main__':
     # model.requires_grad_(False)
     recorder.log_cli('Init The Camera')
     # --- init the camera ---
-    camera = Camera(recorder)
+    camera = Camera(recorder, 1)
     frame_interval = 1
-    batch_size = 10
+    batch_size = 2
     # --- camera heat ---
     camera.init_video()
     recorder.log_cli('START')

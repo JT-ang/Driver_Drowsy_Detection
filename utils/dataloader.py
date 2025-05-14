@@ -88,6 +88,9 @@ def get_target_detection_images(img, crop_coor):
     return input_tensor
 
 def get_image_from_path(img_path):
+    """
+    return a image, color channel : (B, G, R)
+    """
     # (640,640,3) -> (1, 3, 640, 640)
     img = cv2.imread(img_path)
     or_img = cv2.resize(img, (640, 640))
@@ -98,12 +101,21 @@ def get_image_from_path(img_path):
 
     return img
 
+
+def change_img_color_to_show(img):
+    """
+    change the RGB to BRG
+    """
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    return img
+
+
 def image_processor2(img):
     # (1, 3, 640, 640) -> (640,640,3)
     img = img.cpu().numpy()
     img = img.squeeze()
     img = img.transpose((1, 2, 0))
-    # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) # disable this line will cause model.draw() get an error
     or_img = (img * 255.0).astype(np.uint8)
 
     return or_img

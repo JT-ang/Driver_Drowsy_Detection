@@ -7,7 +7,7 @@ from torchvision import models
 from yolov5.models.experimental import attempt_load
 from yolov5.utils.general import non_max_suppression
 
-from utils.dataloader import get_image_from_path, image_processor2
+from utils.dataloader import get_image_from_path, image_processor2, change_img_color_to_show
 
 
 class YOLODetector:
@@ -23,6 +23,9 @@ class YOLODetector:
         return preds
 
     def draw(self, image_tensor, box_data):
+        """
+        return an image with boxes
+        """
         box_data = box_data.cpu().numpy()
         image = image_processor2(image_tensor)
         boxes = box_data[..., :4].astype(np.int32)
@@ -55,7 +58,7 @@ class YOLODetector:
                     img = self.draw(batch_images[k], pred)
                     cv2.imshow("检测效果图", img)
                     cv2.waitKey(0)
-                    print(f'[ERROR]Detect: Pred{len(pred)}, Object:{len(check_set)}')
+                    print("detect fail")
                     exit(0)
                     # TODO: 提醒操作者脸部存在遮挡
                 else:
@@ -64,6 +67,14 @@ class YOLODetector:
                     eye_tensor = torch.zeros(size=(bs, chl, 224, 224), device=self.device)
                     mouth_tensor = torch.zeros(size=(bs, chl, 224, 224), device=self.device)
                     return face_tensor, eye_tensor, mouth_tensor
+
+            # draw the image if success
+            pred = preds[0]
+            if not (len(pred) == 0 or len(check_set) != 3):
+                img = self.draw(batch_images[0], pred)
+                img = change_img_color_to_show(img)
+                cv2.imshow("检测效果图", img)
+                cv2.waitKey(10)
 
             face_score = 0
             eye_score = 0
@@ -184,6 +195,7 @@ class DDnet(nn.Module):
 
     def forward(self, in_frame):
         face_tensor, eye_tensor, mouth_tensor = self.region_maker.process_batch(in_frame, self.is_train)
+        print(face_tensor, eye_tensor, mouth_tensor)
         return self.predictor(eye_tensor, face_tensor)
 
 
